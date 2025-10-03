@@ -20,9 +20,10 @@ export async function lottieToVideo({
 } = {}) {
     const canvas = createCanvas(2, 2);
 
-    const wasmPath = require.resolve('@lottiefiles/dotlottie-web/dist/renderer.wasm');
-
-    DotLottie.setWasmUrl(`file://${wasmPath}`);
+    try {
+        const wasmPath = require.resolve('@lottiefiles/dotlottie-web/dist/renderer.wasm');
+        DotLottie.setWasmUrl(`file://${wasmPath}`);
+    } catch { /* допустимо, если пакет сам найдёт wasm */ }
 
 
     const dataStr = typeof input === 'string'
