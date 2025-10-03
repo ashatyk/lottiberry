@@ -1,7 +1,6 @@
 {
   "functions": {
     "api/render.js": {
-      "runtime": "nodejs20",
       "memory": 1536,
       "maxDuration": 60,
       "includeFiles": "node_modules/@lottiefiles/dotlottie-web/dist/renderer.wasm"
