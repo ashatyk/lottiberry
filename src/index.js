@@ -5,7 +5,7 @@ import fs from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
-import { lottieToVideo } from "../lottie-to-video.js";
+import { lottieToVideo } from "./lottie-to-video.js";
 
 const app = express();
 
@@ -13,9 +13,8 @@ app.use(express.json({ limit: "15mb" }));
 
 app.get("/api/health", (_, res) => res.json({ ok: true }));
 
-// POST /api/render
-// body:
-//  { lottieJson?:object, lottieUrl?:string, width?, height?, fps?, codec?, crf?, preset?, bgColor? }
+// POST /src/index
+// body: { lottieJson?:object, lottieUrl?:string, width?, height?, fps?, codec?, crf?, preset?, bgColor? }
 app.post("/api/render", async (req, res) => {
     try {
         const {
