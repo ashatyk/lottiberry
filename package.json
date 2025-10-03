@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/server.ts",
+    "dev": "tsx src/server.js",
     "start": "node dist/server.js",
-    "build": "tsup src/server.ts --format esm --dts --clean"
+    "build": "tsup src/server.js --format esm --dts --clean"
   },
   "dependencies": {
     "fastify": "^5.0.0",
