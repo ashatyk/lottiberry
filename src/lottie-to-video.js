@@ -142,11 +142,9 @@ function onceEE(emitter, event) {
 
 function resolveFfmpegPath() {
     if (process.env.FFMPEG_PATH) return process.env.FFMPEG_PATH;
-    // предпочитаем системный ffmpeg
     const out = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['ffmpeg'], { encoding: 'utf8' });
     const sys = out.status === 0 ? out.stdout.split(/\r?\n/).find(Boolean) : null;
     if (sys) return sys;
-    // fallback: пакетный ffmpeg-static (если совместим)
     if (ffmpegStatic) return ffmpegStatic;
     return process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
 }

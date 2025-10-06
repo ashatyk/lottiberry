@@ -1,7 +1,3 @@
-# Dockerfile
-# syntax=docker/dockerfile:1.7
-
-#### Build
 FROM node:22-bullseye AS build
 WORKDIR /app
 
@@ -11,15 +7,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./
+
 RUN npm ci --omit=dev --no-audit --no-fund
 
-# Копируем весь исходный код
 COPY src ./src
 
-# Пересобираем canvas под Linux
 RUN npm rebuild canvas || true
 
-#### Runtime
 FROM node:22-slim AS runner
 ENV NODE_ENV=production
 WORKDIR /app

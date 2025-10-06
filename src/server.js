@@ -8,7 +8,6 @@ import { createWriteStream, createReadStream } from 'node:fs';
 import { join } from 'node:path';
 import os from 'node:os';
 
-// Подключи свои реализации:
 import { lottieToVideo as renderSingle } from './lottie-to-video.js';
 import { lottieToVideoParallel as renderParallel } from './lottie-to-video-parallel.js';
 
@@ -117,7 +116,6 @@ fastify.get('/jobs/:id/result', async (req, reply) => {
 
 fastify.listen({ port: Number(process.env.PORT || 3000), host: '0.0.0.0' });
 
-// ---------------- internals ----------------
 function schedule() {
     while (running < CONCURRENCY) {
         const next = [...jobs.values()].find(j => j.status === 'queued');
