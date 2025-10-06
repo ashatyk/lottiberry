@@ -4,10 +4,7 @@ import ffmpegStatic from 'ffmpeg-static';
 import { createRequire } from 'module';
 import { readFile } from 'node:fs/promises';
 import { spawn, spawnSync } from 'node:child_process';
-
 const require = createRequire(import.meta.url);
-
-let RGB_SCRATCH = null;
 
 export async function lottieToVideo({
     input,
@@ -16,7 +13,6 @@ export async function lottieToVideo({
     height,
     fps,
     bgColor = '#000000',
-    codec = 'libx264',     // 'h264_nvenc' | 'h264_qsv' | 'h264_vaapi' | 'libvpx-vp9'
     crf = 18,
     preset = 'medium',
     gop,
@@ -24,8 +20,6 @@ export async function lottieToVideo({
     extraFfmpegArgs = [],
 } = {}) {
     if (!outPath) throw new Error('outPath is required');
-
-    const canvas = createCanvas(2, 2);
 
     try {
         const wasmPath = require.resolve('@lottiefiles/dotlottie-web/dist/renderer.wasm');
@@ -35,6 +29,8 @@ export async function lottieToVideo({
     const dataStr = typeof input === 'string'
         ? await readFile(input, 'utf8')
         : (typeof input === 'object' ? JSON.stringify(input) : String(input));
+
+    const canvas = createCanvas(2, 2);
 
     const player = new DotLottie({
         canvas,
@@ -47,13 +43,17 @@ export async function lottieToVideo({
     });
 
     await waitPlayer(player, 'ready');
+
     await waitPlayer(player, 'load');
 
     const aSize = player.animationSize();
+
     const W = width  ?? aSize.width;
     const H = height ?? aSize.height;
+
     canvas.width = W;
     canvas.height = H;
+
     player.resize();
 
     const srcFps = player.fps ?? (player.totalFrames / Math.max(player.duration, 1e-6));
@@ -63,41 +63,55 @@ export async function lottieToVideo({
     const args = [
         '-y',
         '-f', 'rawvideo',
-        '-pix_fmt', 'rgb24',
-        '-s', `${W}x${H}`,
-        '-r', String(FPS),
+        '-pixel_format', 'rgba',
+        '-video_size', `${W}x${H}`,
+        '-framerate', String(FPS),
         '-i', 'pipe:0',
         '-an',
     ];
 
-    if (codec === 'libvpx-vp9') {
-        args.push('-c:v', 'libvpx-vp9', '-b:v', '0', '-crf', String(crf));
-    } else {
-        args.push('-c:v', codec, '-preset', preset, '-crf', String(crf));
-        args.push('-pix_fmt', 'yuv420p', '-movflags', '+faststart');
-    }
+    args.push('-c:v', 'libx264', '-preset', preset, '-crf', String(crf));
 
-    args.push('-g', String(gop ?? FPS * 2));
+    args.push('-pix_fmt', 'yuv420p', '-movflags', '+faststart');
 
+    args.push('-g', String(gop ?? FPS * 10));
     if (threads) args.push('-threads', String(threads));
-    if (extraFfmpegArgs.length) args.push(...extraFfmpegArgs);
-
+    if (extraFfmpegArgs?.length) args.push(...extraFfmpegArgs);
     args.push(outPath);
 
     const ff = spawnFfmpeg(args);
 
+    let sumSetFrame = 0;
+    let sumWrite = 0;
+    let sumDrain = 0;
+
+    const tFrames0 = performance.now();
+    let lastSrc = -1;
+    let cachedBuf = null;
+    let uniqueRenders = 0;
+
     for (let i = 0; i < totalOut; i++) {
-        const t = i / FPS;
-        const srcIndex = Math.min(player.totalFrames - 1, Math.round(t * srcFps));
-        await renderFrame(player, srcIndex);
+        const tSec = i / FPS;
+        const srcIndex = Math.min(player.totalFrames - 1, Math.round(tSec * srcFps));
 
-        const u8 = player.buffer;
+        if (srcIndex !== lastSrc) {
+            await renderFrame(player, srcIndex);
+            uniqueRenders++;
 
-        RGB_SCRATCH = ensureRgbScratch(RGB_SCRATCH, W * H);
+            const u8 = player.buffer;
+            cachedBuf = Buffer.from(u8.buffer, u8.byteOffset, u8.byteLength);
+            lastSrc = srcIndex;
+        }
 
-        packRGBAtoRGB(u8, RGB_SCRATCH);
+        const ok = ff.stdin.write(cachedBuf);
+        if (!ok) {
+            await onceEE(ff.stdin, 'drain');
+        }
 
-        if (!ff.stdin.write(RGB_SCRATCH)) await onceEE(ff.stdin, 'drain');
+        if ((i + 1) % Math.max(1, Math.floor(FPS)) === 0 || i === totalOut - 1) {
+            const elapsed = performance.now() - tFrames0;
+            const fpsNow = 1000 * (i + 1) / Math.max(elapsed, 1);
+        }
     }
 
     ff.stdin.end();
@@ -140,19 +154,4 @@ function spawnFfmpeg(args) {
     const child = spawn(ffbin, args, { stdio: ['pipe', 'inherit', 'inherit'] });
     child.on('error', (e) => { throw new Error(e.message); });
     return child;
-}
-
-function ensureRgbScratch(buf, pixels) {
-    const need = pixels * 3;
-    if (!buf || buf.length !== need) return Buffer.allocUnsafe(need);
-    return buf;
-}
-
-// RGBA -> RGB
-function packRGBAtoRGB(src, dst) {
-    for (let p = 0, q = 0; q < dst.length; p += 4, q += 3) {
-        dst[q]   = src[p];
-        dst[q+1] = src[p+1];
-        dst[q+2] = src[p+2];
-    }
 }
