@@ -154,6 +154,5 @@ Multipart:
 ## Оптимизация размера образа
 
 - В рантайме только `libcairo`, `pango`, `jpeg`, `png`, `gif`, `ffmpeg`.
-- `.dockerignore` исключает лишние файлы.
 
 ---
