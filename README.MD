@@ -27,6 +27,7 @@
 ## Переменные окружения
 
 - `PORT` — порт HTTP, по умолчанию `3000`.
+- `CONCURRENCY` — число одновременно исполняемых задач очереди.
 - `FFMPEG_PATH` — путь к бинари ffmpeg. В образе уже `/usr/bin/ffmpeg`.
 
 ---
@@ -143,7 +144,7 @@ Multipart:
       server.js
       lottie-to-video.js
       lottie-to-video-parallel.js
-      lottie_worker.js
+      lottie-worker.js
     Dockerfile
     docker-compose.yml
     package.json
