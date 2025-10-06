@@ -118,7 +118,7 @@ export async function lottieToVideoParallel({
     const store = new Map();
 
     const all = chunks.map((indices, idx) => new Promise((resolve, reject) => {
-        const w = new Worker(new URL('./lottie_worker.mjs', import.meta.url), {
+        const w = new Worker(new URL('./lottie_worker.js', import.meta.url), {
             workerData: { dataStr, W, H, bgColor, indices, wasmPath }
         });
 
@@ -170,11 +170,13 @@ function waitEvt(player, type) {
 
 function resolveFfmpegPath() {
     if (process.env.FFMPEG_PATH) return process.env.FFMPEG_PATH;
+    // предпочитаем системный ffmpeg
+    const out = spawnSync(process.platform === 'win32' ? 'where' : 'which', ['ffmpeg'], { encoding: 'utf8' });
+    const sys = out.status === 0 ? out.stdout.split(/\r?\n/).find(Boolean) : null;
+    if (sys) return sys;
+    // fallback: пакетный ffmpeg-static (если совместим)
     if (ffmpegStatic) return ffmpegStatic;
-    const cmd = process.platform === 'win32' ? 'where' : 'which';
-    const out = spawnSync(cmd, ['ffmpeg'], { encoding: 'utf8' });
-    const p = out.status === 0 ? out.stdout.split(/\r?\n/).find(Boolean) : null;
-    return p || (process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg');
+    return process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg';
 }
 
 function splitEven(arr, k) {

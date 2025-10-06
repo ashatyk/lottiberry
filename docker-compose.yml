@@ -1,0 +1,8 @@
+# docker-compose.yml
+services:
+  lottie:
+    build: .
+    ports: ["3000:3000"]
+    environment:
+      PORT: "3000"
+      CONCURRENCY: "1"
