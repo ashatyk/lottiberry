@@ -91,8 +91,10 @@ export async function lottieToVideo({
         const srcIndex = Math.min(player.totalFrames - 1, Math.round(t * srcFps));
         await renderFrame(player, srcIndex);
 
-        const u8 = player.buffer; // RGBA от рендерера
+        const u8 = player.buffer;
+
         RGB_SCRATCH = ensureRgbScratch(RGB_SCRATCH, W * H);
+
         packRGBAtoRGB(u8, RGB_SCRATCH);
 
         if (!ff.stdin.write(RGB_SCRATCH)) await onceEE(ff.stdin, 'drain');
