@@ -53,15 +53,6 @@ JSON-вариант:
 Здоровье сервиса: `{ "ok": true }`.
 
 ---
-
-## Примеры curl
-
-JSON:
-
-    curl -sS -X POST http://localhost:3000/render \
-      -H "content-type: application/json" \
-      -d '{"mode":"parallel","input":"/data/anim.json","width":1080,"height":1920,"fps":30,"workers":4}'
-
 ## Локальный запуск без Docker
 
     node src/server.js
