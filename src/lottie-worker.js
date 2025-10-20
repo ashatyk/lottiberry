@@ -1,21 +1,23 @@
+// lottie-worker.js (ESM)
 import { parentPort, workerData } from 'node:worker_threads';
 import { createCanvas } from 'canvas';
 import { DotLottie } from '@lottiefiles/dotlottie-web';
+import { readFile } from 'node:fs/promises';
 
-const { dataStr, W, H, bgColor, indices, wasmPath } = workerData;
+const { dataPath, W, H, bgColor, indices, wasmPath } = workerData;
+const dataStr = await readFile(dataPath, 'utf8');
 
-if (wasmPath) {
-    DotLottie.setWasmUrl(`file://${wasmPath}`);
-}
+if (wasmPath) DotLottie.setWasmUrl(`file://${wasmPath}`);
 
-const canvas = createCanvas(W, H);
+let canvas = createCanvas(W, H);
+let ctx = canvas.getContext('2d');
 
-const player = new DotLottie({
+let player = new DotLottie({
     canvas,
     autoplay: false,
     loop: false,
     data: dataStr,
-    useFrameInterpolation: true,
+    useFrameInterpolation: false,
     backgroundColor: bgColor,
     renderConfig: { autoResize: false, devicePixelRatio: 1 },
 });
@@ -25,7 +27,6 @@ await once('load');
 
 canvas.width = W;
 canvas.height = H;
-
 player.resize();
 
 for (const i of indices) {
@@ -34,6 +35,16 @@ for (const i of indices) {
     const ab = u8.buffer.slice(u8.byteOffset, u8.byteLength + u8.byteOffset);
     parentPort.postMessage({ type: 'frame', i, ab }, [ab]);
 }
+
+player.destroy();
+
+player = null;
+
+canvas = null;
+
+ctx = null;
+
+parentPort.postMessage({ type: 'done' });
 
 function once(type) {
     return new Promise((resolve) => {

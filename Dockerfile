@@ -1,4 +1,9 @@
-FROM node:22-bullseye AS build
+# syntax=docker/dockerfile:1.7
+
+############ Build ############
+FROM node:22-bookworm AS base
+
+# install node
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -6,27 +11,36 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libcairo2-dev libpango1.0-dev libjpeg-dev libpng-dev libgif-dev librsvg2-dev \
   && rm -rf /var/lib/apt/lists/*
 
-COPY package*.json ./
+# ---- Dependencies ----
+FROM base AS dependencies
+#copy current context
+COPY . .
+#for faster install
+# install and copy production node_modules aside
+# then install ALL node_modules, including 'devDependencies'
+RUN npm set progress=false \
+    && npm config set depth 0 \
+    && npm i --only=production \
+    && cp -R node_modules prod_node_modules \
+    && npm i
 
-RUN npm ci --omit=dev --no-audit --no-fund
+RUN npm run build
 
-COPY src ./src
+# ---- Release ----
+FROM base AS release
+# copy production node_modules
+COPY --from=dependencies /app/prod_node_modules ./node_modules
+COPY --from=dependencies /app/dist ./dist
 
-RUN npm rebuild canvas || true
+ENV PORT 3000
+CMD echo ${PORT}
+#node in production
+ENV NODE_ENV production
 
-FROM node:22-slim AS runner
-ENV NODE_ENV=production
-WORKDIR /app
+EXPOSE ${PORT}
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-  libcairo2 libpango-1.0-0 libjpeg62-turbo libpng16-16 libgif7 ffmpeg \
-  && rm -rf /var/lib/apt/lists/*
-ENV FFMPEG_PATH=/usr/bin/ffmpeg
+#run under 'node' user for security reasons
+USER node
 
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/src ./src
-COPY package*.json ./
-
-EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s CMD node -e "fetch('http://localhost:'+(process.env.PORT||3000)+'/health').then(r=>r.ok?0:1).then(process.exit)"
-CMD ["node", "src/server.js"]
+#same as npm run serve but better for Handling Kernel signals
+CMD ["node","./dist/server.js"]
